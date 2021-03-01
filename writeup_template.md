@@ -17,15 +17,6 @@ The goals / steps of this project are the following:
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
-[//]: # (Image References)
-
-[image1]: ./examples/undistort_output.png "Undistorted"
-[image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
-[video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -39,76 +30,56 @@ The goals / steps of this project are the following:
 
 You're reading it!
 
+All code for this project can be found in the python notebook called Advanced_lane_finding.ipynb
+
 ### Camera Calibration
 
 #### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
+First I get the object points, which are the (x,y,z) coordinates of the chessboard corners. I assume that the chessboard is fixed on the (x,y) plane at z=0 such that the object points are the same for each calibration image. This means that 'objp' is appended to 'objpoints' whenever all chessboard corners are successfully detected in a test image. 'imgpoints' will be appended with the (x,y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 
-I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
-
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
-
-![alt text][image1]
+The calibration and distortion coefficients were calculated using 'objpoints' and 'imgpoints'. These coefficients were used to apply distortion correction to a test image. The result can be seen in "output_images/undistorted_calibration1.jpg"
 
 ### Pipeline (single images)
 
 #### 1. Provide an example of a distortion-corrected image.
 
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
-![alt text][image2]
+Using the same distortion correction process above I undistorted all of the test images the results of which can be seen in "output_images/Undistorted_images"
+
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+Function color_combined is where I applied color thresholding and gradients. I used the HLS color space with x gradients between 20 and 100, and s color channels between 170 and 255. The results of the combination to create a combined_binary image can be seen in "output_images/Combined_binary_images"
 
-![alt text][image3]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+To do my perspective transform I used function warper(). This function takes a binary image, and the src and dst (source and destination) points. In this case the points were hardcoded with points I selected by examining the original image.
 
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
+```src = np.float32(
+        [[568, 468], [715, 468], 
+        [1040, 680], [270,680]])
+    
 dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+       [[200,0], [1000, 0], 
+       [1000, 680], [200, 680]])
+
 ```
 
-This resulted in the following source and destination points:
+The perspective transform was verified by examining the image after the perpective transform was performed as can be seen in the images in "output_images/Birds_eye_images"
 
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
-
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
-
-![alt text][image4]
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
-
-![alt text][image5]
+On the first run of the video and for each of the test images, function find_lane_pixels() was used to window the bird_eye image and fit a polynomial. A histogram was used to identify where the lane lines were and windowing was used to fully identify the lanes when the road curves. For each proceeding frame the function search_around_poly was used to identify the lane pixels, this was to reduce repeated computations that were unnecessary. Since we already had an idea of where to look in the image for the lane lines there is no need to search the entire image but only a small subset of the pixels. The result of the windowing can be seen in the test image output in "output_images/Poly_lines_images".
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+Function measure_curvature_real() was used to calculate the radius of curvature. This function takes the image output from the previous step as well as the left_fitx and right_fitx (the fitted polynomials). It calculates the curvature and converts the values to meters. To find the position with respect to center, first I found the midpoint between the left and right x-intercept. Then using this value I calculated the pixel offset by finding the difference between the true middle x-intercept for the image and the calculated position. This result was then converted to meters. 
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
-
-![alt text][image6]
+A new perspective transform was carried out to return the image to its original perspective. First the Minv (inverse of the original perspective transform) was calculated and applied using cv2.warpPerspective. The area between the left and right lanes is filled with the color green using polyfill(). The values from the previous step were then output on the result image. The result images can be seen in "output_images/Result_images"
 
 ---
 
@@ -116,7 +87,7 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+The output video is called "project_video_output.mp4" and is located in the base directory.
 
 ---
 
@@ -124,4 +95,4 @@ Here's a [link to my video result](./project_video.mp4)
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+My pipeline works fairly well on this video, the only major problems it encounters are when the lane lines are very difficult to make out or non-existant. It might help to use the same polynomial for both lane lines when one is of poor quality or non-existant, provided the other lane is not. This may not result in a perfect read but would keep the system from completely losing the lines. I also only run the windowing on the first frame, the result may be improved if windowing was used whenever the result was poor from search_around_poly(). However, in the case that the lane lines are non-existant I am not sure it would make much difference. 
